@@ -39,6 +39,10 @@
 // If communication doesn't work, speed is automatically dropped
 // #define SDIO_DEFAULT_SPEED SDIO_HIGHSPEED
 
+// Number of CRC errors before automatic fallback to slower clockspeed
+// #define SDIO_FALLBACK_CRC_ERROR_COUNT 3
+// #define SDIO_FALLBACK_MODE SDIO_STANDARD
+
 // PIO block to use
 #define SDIO_PIO pio1
 #define SDIO_SM  0

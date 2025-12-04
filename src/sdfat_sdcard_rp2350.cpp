@@ -40,6 +40,9 @@ static sdio_status_t g_sdio_error;
 static uint32_t g_sdio_tmp_buf[SDIO_BLOCK_SIZE / 4];
 static uint32_t g_sdio_sector_count;
 static int g_sdio_clk_hz;
+static uint32_t g_sdio_crc_failure_count;
+static rp2350_sdio_mode_t g_sdio_max_clk_mode = SDIO_DEFAULT_SPEED;
+static rp2350_sdio_mode_t g_sdio_active_clk_mode;
 
 #if SDIO_SDFAT_PREFETCH_BUFFER >= SDIO_BLOCK_SIZE
 #define USE_PREFETCH
@@ -108,6 +111,24 @@ static sd_callback_t get_stream_callback(const uint8_t *buf, uint32_t count, boo
     return NULL;
 }
 
+static void sdiocard_error_monitor(SdioCard *card, sdio_status_t error)
+{
+    if (error == SDIO_ERR_DATA_CRC || error == SDIO_ERR_WRITE_CRC || error == SDIO_ERR_RESPONSE_CRC)
+    {
+        g_sdio_crc_failure_count++;
+
+        if (g_sdio_crc_failure_count > SDIO_FALLBACK_CRC_ERROR_COUNT &&
+            (int)g_sdio_active_clk_mode > SDIO_FALLBACK_MODE)
+        {
+            SDIO_ERRMSG("Multiple SDIO CRC errors, reducing clock to 25 MHz", g_sdio_crc_failure_count, g_sdio_active_clk_mode);
+            g_sdio_max_clk_mode = SDIO_FALLBACK_MODE;
+
+            SdioConfig defcfg;
+            card->begin(defcfg);
+        }
+    }
+}
+
 // Read just a single sector. This is the most basic access mode and it is used
 // for diagnostics and retry. The dst buffer must be aligned to 4 bytes.
 static bool read_single_sector(SdioCard *card, uint32_t sector, uint8_t *dst)
@@ -150,6 +171,8 @@ static bool read_single_sector(SdioCard *card, uint32_t sector, uint8_t *dst)
     else
     {
         SDIO_ERRMSG("sector read failure", *(uint32_t*)(dst + 0), g_sdio_error);
+        sdiocard_error_monitor(card, g_sdio_error);
+
         return false;
     }
 }
@@ -185,6 +208,7 @@ static bool write_single_sector(SdioCard *card, uint32_t sector, const uint8_t *
     else
     {
         SDIO_ERRMSG("sector write failure", g_sdio_error, 0);
+        sdiocard_error_monitor(card, g_sdio_error);
         return false;
     }
 }
@@ -250,6 +274,7 @@ bool SdioCard::begin(SdioConfig sdioConfig)
     g_sdio_error = SDIO_OK;
     g_sdio_error_line = 0;
     g_sdio_clk_hz = 0;
+    g_sdio_crc_failure_count = 0;
 
     // Initialize at 400 kHz clock speed
     rp2350_sdio_init(rp2350_sdio_get_timing(SDIO_INITIALIZE));
@@ -356,7 +381,14 @@ bool SdioCard::begin(SdioConfig sdioConfig)
         }
     }
 
-    while ((int)mode > SDIO_INITIALIZE)
+    if ((int)mode > g_sdio_max_clk_mode)
+    {
+        // Limit max speed after CRC failures
+        SDIO_DBGMSG("SDIO speed limited after CRC errors", mode, g_sdio_max_clk_mode);
+        mode = g_sdio_max_clk_mode;
+    }
+
+    while ((int)mode > SDIO_MMC)
     {
         // Select clock rate to use
         timing = rp2350_sdio_get_timing(mode);
@@ -398,6 +430,7 @@ bool SdioCard::begin(SdioConfig sdioConfig)
     }
 
     g_sdio_clk_hz = clock_get_hz(clk_sys) / timing.data_clk_divider;
+    g_sdio_active_clk_mode = mode;
     SDIO_DBGMSG("SDIO card initialization succeeded", g_sdio_clk_hz, mode);
 
     return true;
@@ -542,7 +575,9 @@ static bool prefetchProcess(SdioCard *card)
         SDIO_ERRMSG("Prefetch failed",
             g_sdio_prefetch.sector + g_sdio_prefetch.prefetch_start,
             g_sdio_prefetch.prefetch_count);
+        sdiocard_error_monitor(card, g_sdio_error);
         card->stopTransmission(true);
+        prefetchClear();
         return false;
     }
 }
@@ -722,6 +757,7 @@ bool SdioCard::readData(uint8_t* dst)
     if (g_sdio_error != SDIO_OK)
     {
         SDIO_ERRMSG("SdioCard::readData failed", g_sdio_error, m_curSector);
+        sdiocard_error_monitor(this, g_sdio_error);
         return false;
     }
 
@@ -863,6 +899,7 @@ bool SdioCard::writeData(const uint8_t* src)
     if (g_sdio_error != SDIO_OK)
     {
         SDIO_ERRMSG("SdioCard::writeData failed", g_sdio_error, m_curSector);
+        sdiocard_error_monitor(this, g_sdio_error);
         return false;
     }
 
@@ -1008,6 +1045,7 @@ bool SdioCard::writeSectors(uint32_t sector, const uint8_t* src, size_t n)
             else
             {
                 SDIO_ERRMSG("writeSectors multi-block failed", sector, g_sdio_error);
+                sdiocard_error_monitor(this, g_sdio_error);
                 stopTransmission(true);
                 // Fall through to retry sector-by-sector
             }

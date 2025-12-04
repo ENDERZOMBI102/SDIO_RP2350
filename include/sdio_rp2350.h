@@ -162,6 +162,16 @@ enum sdio_status_t {
 #define SDIO_DEFAULT_SPEED SDIO_HIGHSPEED
 #endif
 
+// Number of CRC errors before automatic fallback to slower clockspeed
+#ifndef SDIO_FALLBACK_CRC_ERROR_COUNT
+#define SDIO_FALLBACK_CRC_ERROR_COUNT 3
+#endif
+
+// Mode to fall back to after multiple CRC errors
+#ifndef SDIO_FALLBACK_MODE
+#define SDIO_FALLBACK_MODE SDIO_STANDARD
+#endif
+
 // If the target communication frequency cannot achieved exactly,
 // we can choose between smaller or higher divider. This specifies
 // how much we can exceed the target clock rate
