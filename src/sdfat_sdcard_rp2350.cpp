@@ -120,7 +120,7 @@ static void sdiocard_error_monitor(SdioCard *card, sdio_status_t error)
         if (g_sdio_crc_failure_count > SDIO_FALLBACK_CRC_ERROR_COUNT &&
             (int)g_sdio_active_clk_mode > SDIO_FALLBACK_MODE)
         {
-            SDIO_ERRMSG("Multiple SDIO CRC errors, reducing clock to 25 MHz", g_sdio_crc_failure_count, g_sdio_active_clk_mode);
+            SDIO_CRITMSG("Multiple SDIO CRC errors, reducing clock to 25 MHz", g_sdio_crc_failure_count, g_sdio_active_clk_mode);
             g_sdio_max_clk_mode = SDIO_FALLBACK_MODE;
 
             SdioConfig defcfg;
@@ -998,7 +998,7 @@ bool SdioCard::writeSector(uint32_t sector, const uint8_t* src)
 
         if (!success)
         {
-            SDIO_ERRMSG("SdioCard::writeSector failed", sector, 0);
+            SDIO_CRITMSG("SdioCard::writeSector failed even after retry", sector, 0);
             return false;
         }
     }
@@ -1096,7 +1096,7 @@ bool SdioCard::readSector(uint32_t sector, uint8_t* dst)
         
         if (!success)
         {
-            SDIO_ERRMSG("SdioCard::readSector failed", sector, 0);
+            SDIO_CRITMSG("SdioCard::readSector failed even after retry", sector, 0);
             return false;
         }
     }

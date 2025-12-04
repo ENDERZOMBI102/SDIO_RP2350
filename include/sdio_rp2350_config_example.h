@@ -7,6 +7,7 @@
 // sdio_log() function in your own code.
 
 // void sdio_log(const char *txt, uint32_t arg1, uint32_t arg2);
+// #define SDIO_CRITMSG(txt, arg1, args) sdio_log(txt, arg1, arg2)
 // #define SDIO_ERRMSG(txt, arg1, arg2) sdio_log(txt, arg1, arg2)
 // #define SDIO_DBGMSG(txt, arg1, arg2) sdio_log(txt, arg1, arg2)
 

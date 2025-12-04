@@ -58,8 +58,12 @@ enum sdio_status_t {
     SDIO_ERR_INVALID_PARAM = 10,   // Invalid parameters to function
 };
 
-// SDIO driver can optionally log debug and error messages.
+// SDIO driver can optionally log debug, error and critical messages.
 // To enable this, edit sdio_rp2350_config.h
+#ifndef SDIO_CRITMSG
+#define SDIO_CRITMSG(txt, arg1, arg2)
+#endif
+
 #ifndef SDIO_ERRMSG
 #define SDIO_ERRMSG(txt, arg1, arg2)
 #endif
