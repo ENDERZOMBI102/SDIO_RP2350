@@ -575,9 +575,9 @@ static bool prefetchProcess(SdioCard *card)
         SDIO_ERRMSG("Prefetch failed",
             g_sdio_prefetch.sector + g_sdio_prefetch.prefetch_start,
             g_sdio_prefetch.prefetch_count);
-        sdiocard_error_monitor(card, g_sdio_error);
         card->stopTransmission(true);
         prefetchClear();
+        sdiocard_error_monitor(card, g_sdio_error);
         return false;
     }
 }
@@ -1045,8 +1045,8 @@ bool SdioCard::writeSectors(uint32_t sector, const uint8_t* src, size_t n)
             else
             {
                 SDIO_ERRMSG("writeSectors multi-block failed", sector, g_sdio_error);
-                sdiocard_error_monitor(this, g_sdio_error);
                 stopTransmission(true);
+                sdiocard_error_monitor(this, g_sdio_error);
                 // Fall through to retry sector-by-sector
             }
         }
