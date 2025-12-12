@@ -542,8 +542,16 @@ sdio_status_t rp2350_sdio_rx_start(uint8_t *buffer, uint32_t num_blocks, uint32_
         // 2 per byte, plus 16 for checksum, plus 8 for trailing clocks
         // minus one because how PIO counter works
         int nibbles = blocksize * 2 + 16 + 8 - 1;
+
+        // In high speed mode, one extra clock edge is issued after capturing the last nibble,
+        // so subtract one. In overclock mode, two extra edges.
+        if (g_sdio.pio_loaded_data_prog == &sdio_data_rx_hs_program)
+            nibbles -= 1;
+        else if (g_sdio.pio_loaded_data_prog == &sdio_data_rx_hs_oc_program)
+            nibbles -= 2;
+
         pio_sm_put(SDIO_PIO, SDIO_SM, nibbles);
-        pio_sm_exec(SDIO_PIO, SDIO_SM, pio_encode_out(pio_y, 32));
+        pio_sm_exec(SDIO_PIO, SDIO_SM, pio_encode_out(pio_y, 32) | pio_encode_sideset(1, 1));
 
         // Enable RX FIFO join because we don't need the TX FIFO during transfer.
         // This gives more leeway for the DMA block switching
