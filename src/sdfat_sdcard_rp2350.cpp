@@ -388,7 +388,8 @@ bool SdioCard::begin(SdioConfig sdioConfig)
         mode = g_sdio_max_clk_mode;
     }
 
-    while ((int)mode > SDIO_MMC)
+    bool success = false;
+    while ((int)mode >= SDIO_MMC)
     {
         // Select clock rate to use
         timing = rp2350_sdio_get_timing(mode);
@@ -425,8 +426,16 @@ bool SdioCard::begin(SdioConfig sdioConfig)
         }
         else
         {
+            success = true;
             break;
         }
+    }
+
+    if (!success)
+    {
+        // We initially had communication, but lost it when trying to adjust speeds.
+        SDIO_ERRMSG("SDIO failed after clock tests", 0, 0);
+        return false;
     }
 
     g_sdio_clk_hz = clock_get_hz(clk_sys) / timing.data_clk_divider;

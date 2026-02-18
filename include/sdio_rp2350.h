@@ -61,7 +61,7 @@ enum sdio_status_t {
 // SDIO driver can optionally log debug, error and critical messages.
 // To enable this, edit sdio_rp2350_config.h
 #ifndef SDIO_CRITMSG
-#define SDIO_CRITMSG(txt, arg1, arg2)
+#define SDIO_CRITMSG SDIO_ERRMSG
 #endif
 
 #ifndef SDIO_ERRMSG
