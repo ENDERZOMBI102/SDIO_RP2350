@@ -22,7 +22,7 @@ target_include_directories( SDIO_RP2350
 	PRIVATE src
 )
 target_link_libraries( SDIO_RP2350
-	INTERFACE
+	PUBLIC
 		# defined by library user, must contain root-level header `sdio_rp2350_config.h`
 		SDIO_RP2350_config
 	PRIVATE
