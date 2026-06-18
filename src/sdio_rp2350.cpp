@@ -86,6 +86,8 @@ static struct {
         pio_sm_config data_tx;
     } pio_cfg;
 
+    const pio_program_t *pio_loaded_cmd_prog;
+
     // We have to switch between rx/tx programs because they won't
     // both fit in PIO RAM.
     const pio_program_t *pio_loaded_data_prog;
@@ -1247,18 +1249,29 @@ void rp2350_sdio_init(rp2350_sdio_timing_t timing)
         resources_claimed = true;
     }
 
-    memset(&g_sdio, 0, sizeof(g_sdio));
-    g_sdio.timing = timing;
-
     dma_channel_abort(SDIO_DMACH_A);
     dma_channel_abort(SDIO_DMACH_B);
     pio_sm_set_enabled(SDIO_PIO, SDIO_SM, false);
     
-    // Clear PIO memory and prepare the command program
-    // Data programs are loaded when needed
-    pio_clear_instruction_memory(SDIO_PIO);
-    g_sdio.pio_loaded_data_prog = NULL;
+    // Remove any previously loaded PIO programs
+    if (g_sdio.pio_loaded_cmd_prog)
+    {
+        pio_remove_program(SDIO_PIO, g_sdio.pio_loaded_cmd_prog, g_sdio.pio_offset.sdio_cmd);
+        g_sdio.pio_loaded_cmd_prog = NULL;
+    }
 
+    if (g_sdio.pio_loaded_data_prog)
+    {
+        pio_remove_program(SDIO_PIO, g_sdio.pio_loaded_data_prog, g_sdio.pio_loaded_data_prog_offset);
+        g_sdio.pio_loaded_data_prog = NULL;
+    }
+
+    // Reset whole sdio state
+    memset(&g_sdio, 0, sizeof(g_sdio));
+    g_sdio.timing = timing;
+
+    // Load appropriate command program
+    // Data programs are loaded when needed
     {
         // Adjust command clock speed
         int prescaler, delay;
@@ -1272,10 +1285,12 @@ void rp2350_sdio_init(rp2350_sdio_timing_t timing)
         if (!timing.use_high_speed)
         {
             g_sdio.pio_offset.sdio_cmd = adjust_clk_add_program(&sdio_cmd_program, delay0, delay1);
+            g_sdio.pio_loaded_cmd_prog = &sdio_cmd_program;
         }
         else
         {
             g_sdio.pio_offset.sdio_cmd = adjust_clk_add_program(&sdio_cmd_hs_program, delay0, delay1);
+            g_sdio.pio_loaded_cmd_prog = &sdio_cmd_hs_program;
         }
 
         pio_sm_config cfg = sdio_cmd_program_get_default_config(g_sdio.pio_offset.sdio_cmd);
