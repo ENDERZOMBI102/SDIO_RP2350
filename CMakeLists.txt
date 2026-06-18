@@ -1,8 +1,10 @@
 cmake_minimum_required( VERSION 3.22 )
 
 project( SDIO_RP2350
+	VERSION 1.0.8
+	DESCRIPTION "High performance library for SD card access on RP2350 microcontroller."
+	HOMEPAGE_URL "https://github.com/ENDERZOMBI102/SDIO_RP2350"
 	LANGUAGES CXX
-	HOMEPAGE_URL "https://github.com/rabbitholecomputing/SDIO_RP2350"
 )
 
 set( SDIO_RP2350_DIR ${CMAKE_CURRENT_LIST_DIR} )
